@@ -119,6 +119,10 @@ func (s storage) deleteRepo(sess *xorm.Session, repo *model.Repo) error {
 		return err
 	}
 
+	if _, err := sess.Where("repo_id = ?", repo.ID).Delete(new(model.Parameter)); err != nil {
+		return err
+	}
+
 	// delete related pipelines
 	for {
 		pipelineIDs := make([]int64, 0, perPage)

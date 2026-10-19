@@ -67,6 +67,24 @@ func CreatePipeline(c *gin.Context) {
 		return
 	}
 
+	// Validate submitted variables against the repo's defined parameters and fill in
+	// defaults. Repos without defined parameters behave exactly as before (free-text
+	// variables only, no validation).
+	params, err := _store.ParameterList(repo, nil)
+	if err != nil {
+		c.String(http.StatusInternalServerError, "Error getting parameter list. %s", err)
+		return
+	}
+	if len(params) > 0 {
+		if opts.Variables == nil {
+			opts.Variables = make(map[string]string)
+		}
+		if err := model.ValidateParameterValues(model.ParametersForEvent(params, model.EventManual), opts.Variables); err != nil {
+			c.String(http.StatusUnprocessableEntity, "Error validating pipeline parameters. %s", err)
+			return
+		}
+	}
+
 	user := session.User(c)
 
 	lastCommit, err := _forge.BranchHead(c, user, repo, opts.Branch)
@@ -555,7 +573,8 @@ func GetPipelineQueue(c *gin.Context) {
 func PostPipeline(c *gin.Context) {
 	_store := store.FromContext(c)
 	repo := session.Repo(c)
-	pl := session.Pipeline(c)
+	parent := *session.Pipeline(c)
+	pl := &parent
 
 	user, err := _store.GetUser(repo.UserID)
 	if err != nil {
@@ -603,6 +622,12 @@ func PostPipeline(c *gin.Context) {
 		}
 	}
 
+	if c.Query("event") == string(model.EventDeploy) {
+		if err := validateDeploymentParameters(c, _store, repo, pl, envs); err != nil {
+			return
+		}
+	}
+
 	newPipeline, err := pipeline.Restart(c, _store, pl, user, repo, envs)
 	if err != nil {
 		handlePipelineErr(c, err)
@@ -647,4 +672,42 @@ func DeletePipelineLogs(c *gin.Context) {
 	}
 
 	c.Status(http.StatusNoContent)
+}
+
+// Deploy 沿用父构建变量；只在显式 Deploy 时应用 deployment 表单定义，普通 Restart 不受影响。
+func validateDeploymentParameters(c *gin.Context, s store.Store, repo *model.Repo, pl *model.Pipeline, envs map[string]string) error {
+	params, err := s.ParameterList(repo, nil)
+	if err != nil {
+		c.String(http.StatusInternalServerError, "Error loading deployment parameters")
+		return err
+	}
+	values := make(map[string]string, len(pl.AdditionalVariables)+len(envs)+2)
+	for name, value := range pl.AdditionalVariables {
+		values[name] = value
+	}
+	for name, value := range envs {
+		values[name] = value
+	}
+	delete(values, "deploy_to")
+	delete(values, "deploy_task")
+	if _, present := c.Request.URL.Query()["deploy_to"]; present || pl.DeployTo != "" {
+		values["deploy_to"] = pl.DeployTo
+	}
+	if _, present := c.Request.URL.Query()["deploy_task"]; present || pl.DeployTask != "" {
+		values["deploy_task"] = pl.DeployTask
+	}
+	if err := model.ValidateParameterValues(model.ParametersForEvent(params, model.EventDeploy), values); err != nil {
+		c.String(http.StatusUnprocessableEntity, "Invalid deployment parameters: %s", err)
+		return err
+	}
+	pl.DeployTo = values["deploy_to"]
+	pl.DeployTask = values["deploy_task"]
+	delete(values, "deploy_to")
+	delete(values, "deploy_task")
+	delete(envs, "deploy_task")
+	pl.AdditionalVariables = values
+	for name, value := range values {
+		envs[name] = value
+	}
+	return nil
 }

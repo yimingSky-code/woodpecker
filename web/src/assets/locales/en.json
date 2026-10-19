@@ -214,6 +214,52 @@
           "confirm": "All data will be lost after this action!\n\nDo you really want to proceed?",
           "success": "Repository deleted"
         }
+      },
+      "parameters": {
+        "parameters": "Parameters",
+        "desc": "Configure typed inputs for manual runs and deployments. These are repository-wide, static options.",
+        "show": "Show parameters",
+        "add": "Add parameter",
+        "none": "There are no parameters yet.",
+        "save": "Save parameter",
+        "created": "Parameter created",
+        "saved": "Parameter saved",
+        "deleted": "Parameter deleted",
+        "edit": "Edit parameter",
+        "delete": "Delete parameter",
+        "name": {
+          "name": "Name",
+          "placeholder": "Environment variable name"
+        },
+        "type": {
+          "type": "Type",
+          "string": "String",
+          "number": "Number",
+          "boolean": "Boolean",
+          "choice": "Choice",
+          "multi_choice": "Checkbox group (multiple choices)"
+        },
+        "description": {
+          "description": "Description",
+          "placeholder": "Shown in the manual pipeline run form"
+        },
+        "options": {
+          "options": "Options",
+          "desc": "One option per line. Multiple choices are passed as a comma-separated value; their options cannot contain commas."
+        },
+        "default": "Default value",
+        "no_default": "No default",
+        "required": "Required",
+        "order": {
+          "order": "Position",
+          "desc": "Parameters are sorted ascending by this value in the run form."
+        },
+        "event": {
+          "title": "Run type",
+          "manual": "Manual run",
+          "deployment": "Deploy from a build",
+          "desc": "deploy_to and deploy_task configure the native Deploy fields. Other names become pipeline variables."
+        }
       }
     },
     "pipeline": {
@@ -306,6 +352,10 @@
         "metadata_exec_desc": "Download the metadata of this pipeline to run it locally. This allows you to fix problems and test changes before committing them. The Woodpecker CLI must be installed locally in the same version as the server."
       },
       "view": "View pipeline"
+    },
+    "parameters": {
+      "invalid": "Complete the required fields and choose valid values.",
+      "load_failed": "Could not load pipeline parameters. Please try again."
     }
   },
   "org": {

@@ -1,5 +1,5 @@
 <template>
-  <Panel v-if="!loading">
+  <Panel v-if="!loading && !loadError">
     <form @submit.prevent="triggerManualPipeline">
       <span class="text-wp-text-100 text-xl">{{ $t('repo.manual_pipeline.title') }}</span>
 
@@ -11,6 +11,12 @@
       <InputField v-slot="{ id }" :label="$t('repo.manual_pipeline.select_branch')">
         <SelectField :id="id" v-model="payload.branch" :options="branches" required />
       </InputField>
+
+      <PipelineParameterFields
+        v-model="parameterValues"
+        :parameters="parameters"
+        @update:is-valid="parametersValid = $event"
+      />
 
       <InputField v-slot="{ id }" :label="$t('repo.manual_pipeline.variables.title')">
         <span class="text-wp-text-alt-100 mb-2 text-sm">{{ $t('repo.manual_pipeline.variables.desc') }}</span>
@@ -27,6 +33,7 @@
       <Button type="submit" :text="$t('repo.manual_pipeline.trigger')" :disabled="!isFormValid" />
     </form>
   </Panel>
+  <p v-else-if="loadError" role="alert">{{ $t('repo.parameters.load_failed') }}</p>
   <div v-else class="text-wp-text-100 flex justify-center">
     <Icon name="spinner" />
   </div>
@@ -45,6 +52,9 @@ import KeyValueEditor from '~/components/form/KeyValueEditor.vue';
 import SelectField from '~/components/form/SelectField.vue';
 import TextField from '~/components/form/TextField.vue';
 import Panel from '~/components/layout/Panel.vue';
+import PipelineParameterFields from '~/components/form/PipelineParameterFields.vue';
+import type { Parameter } from '~/lib/api/types';
+import { initialParameterValues, parametersForEvent } from '~/lib/pipelineParameters';
 import useApiClient from '~/compositions/useApiClient';
 import { requiredInject } from '~/compositions/useInjectProvide';
 import { usePaginate } from '~/compositions/usePaginate';
@@ -73,15 +83,20 @@ const payload = ref<{ message: string; branch: string; variables: Record<string,
   variables: {},
 });
 
+const parameters = ref<Parameter[]>([]);
+const parameterValues = ref<Record<string, string>>({});
+const parametersValid = ref(true);
 const isVariablesValid = ref(true);
+const submitting = ref(false);
+const loadError = ref(false);
 
 const isFormValid = computed(() => {
-  return payload.value.branch !== '' && isVariablesValid.value;
+  return payload.value.branch !== '' && isVariablesValid.value && parametersValid.value && !submitting.value;
 });
 
 const pipelineOptions = computed(() => ({
   ...payload.value,
-  variables: payload.value.variables,
+  variables: { ...payload.value.variables, ...parameterValues.value },
 }));
 
 const loading = ref(true);
@@ -89,40 +104,52 @@ onMounted(async () => {
   if (!repoPermissions.value.push) {
     notifications.notify({ type: 'error', title: i18n.t('repo.settings.not_allowed') });
     await router.replace({ name: 'home' });
+    return;
   }
 
-  const data = await usePaginate((page) => apiClient.getRepoBranches(repo.value.id, { page }));
-  branches.value = data.map((e) => ({
-    text: e,
-    value: e,
-  }));
-  loading.value = false;
+  try {
+    const [data, definitions] = await Promise.all([
+      usePaginate((page) => apiClient.getRepoBranches(repo.value.id, { page })),
+      usePaginate(async (page) => (await apiClient.getParameterList(repo.value.id, { page })) ?? []),
+    ]);
+    branches.value = data.map((e) => ({ text: e, value: e }));
+    if (!data.includes(payload.value.branch)) payload.value.branch = repo.value.default_branch || data[0] || '';
+    parameters.value = parametersForEvent(definitions, 'manual');
+    parameterValues.value = initialParameterValues(parameters.value);
+  } catch {
+    loadError.value = true;
+  } finally {
+    loading.value = false;
+  }
 });
 
 async function triggerManualPipeline() {
-  loading.value = true;
-  const pipeline = await apiClient.createPipeline(repo.value.id, pipelineOptions.value);
+  if (!isFormValid.value) return;
+  submitting.value = true;
+  try {
+    const pipeline = await apiClient.createPipeline(repo.value.id, pipelineOptions.value);
 
-  emit('close');
+    emit('close');
 
-  if (typeof pipeline == 'string') {
-    // if this is a string (http 204) there is no workflow to run with the 'manual' event
+    if (typeof pipeline == 'string') {
+      // if this is a string (http 204) there is no workflow to run with the 'manual' event
 
-    await router.push({
-      name: 'repo',
-    });
+      await router.push({
+        name: 'repo',
+      });
 
-    notifications.notify({ type: 'warn', title: i18n.t('repo.manual_pipeline.no_manual_workflows') });
-  } else {
-    await router.push({
-      name: 'repo-pipeline',
-      params: {
-        pipelineId: pipeline.number,
-      },
-    });
+      notifications.notify({ type: 'warn', title: i18n.t('repo.manual_pipeline.no_manual_workflows') });
+    } else {
+      await router.push({
+        name: 'repo-pipeline',
+        params: {
+          pipelineId: pipeline.number,
+        },
+      });
+    }
+  } finally {
+    submitting.value = false;
   }
-
-  loading.value = false;
 }
 
 useWPTitle(computed(() => [i18n.t('repo.manual_pipeline.trigger'), repo.value.full_name]));

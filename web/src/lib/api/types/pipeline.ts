@@ -46,6 +46,8 @@ export interface Pipeline {
 
   // Where the deployment should go.
   deploy_to: string;
+  deploy_task?: string;
+  variables?: Record<string, string>;
 
   // The commit for the pipeline.
   commit: string;

@@ -285,6 +285,7 @@ func TestRepoCount(t *testing.T) {
 
 func TestRepoCrud(t *testing.T) {
 	store, closer := newTestStore(t,
+		new(model.Parameter),
 		new(model.Repo),
 		new(model.User),
 		new(model.Perm),
@@ -351,6 +352,7 @@ func TestRepoCrud(t *testing.T) {
 
 func TestRepoDelete(t *testing.T) {
 	store, closer := newTestStore(t,
+		new(model.Parameter),
 		new(model.Repo),
 		new(model.User),
 		new(model.Perm),
@@ -375,6 +377,8 @@ func TestRepoDelete(t *testing.T) {
 	}
 	assert.NoError(t, store.CreateRepo(&repo))
 
+	assert.NoError(t, store.ParameterCreate(&model.Parameter{RepoID: repo.ID, Name: "SERVICES", Type: model.ParameterTypeString}))
+
 	// create 60 new pipelines to test more than one page is deleted
 	for range 60 {
 		pipeline := model.Pipeline{
@@ -386,6 +390,10 @@ func TestRepoDelete(t *testing.T) {
 		assert.NoError(t, store.CreatePipeline(&pipeline, &step))
 	}
 	assert.NoError(t, store.DeleteRepo(&repo))
+
+	parameterCount, err := store.engine.Count(new(model.Parameter))
+	assert.NoError(t, err)
+	assert.Zero(t, parameterCount)
 
 	stepCount, err := store.engine.Count(new(model.Step))
 	assert.NoError(t, err)
