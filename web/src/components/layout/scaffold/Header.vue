@@ -1,10 +1,12 @@
 <template>
-  <header class="text-wp-text-100" :class="{ 'md:px-4': fullWidth }">
-    <Container :full-width="fullWidth" class="relative py-0!">
-      <div class="border-wp-background-400 dark:border-wp-background-100 border-b">
-        <div class="flex w-full flex-col gap-2 py-3 md:flex-row md:items-center md:justify-between md:gap-10">
+  <header class="scaffold-header text-wp-text-100" :class="{ 'md:px-4': fullWidth }">
+    <Container :full-width="fullWidth" class="scaffold-header-container relative py-0!">
+      <div class="scaffold-header-inner border-wp-background-400 dark:border-wp-background-100 border-b">
+        <div
+          class="scaffold-title-row flex w-full flex-col gap-2 py-3 md:flex-row md:items-center md:justify-between md:gap-10"
+        >
           <div
-            class="flex min-h-10 content-start items-center"
+            class="scaffold-title flex min-h-10 content-start items-center"
             :class="{
               'md:flex-1': searchBoxPresent,
             }"
@@ -30,7 +32,7 @@
           />
           <div
             v-if="$slots.headerActions"
-            class="flex flex-wrap items-center gap-x-2 gap-y-2 md:flex-nowrap md:justify-end"
+            class="scaffold-header-actions flex flex-wrap items-center gap-x-2 gap-y-2 md:flex-nowrap md:justify-end"
             :class="{
               'md:flex-1': searchBoxPresent,
             }"
@@ -39,7 +41,10 @@
           </div>
         </div>
 
-        <div v-if="enableTabs" class="flex flex-col gap-4 md:flex-row md:items-center md:justify-between md:py-0">
+        <div
+          v-if="enableTabs"
+          class="scaffold-tabs-row flex flex-col gap-4 md:flex-row md:items-center md:justify-between md:py-0"
+        >
           <Tabs class="order-2 md:order-none" />
           <div v-if="$slots.headerActions" class="flex flex-wrap content-start md:justify-end">
             <slot name="tabActions" />

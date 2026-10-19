@@ -213,18 +213,18 @@
         "add": "添加仓库",
         "branches": "分支",
         "deploy_pipeline": {
-            "enter_target": "目标部署环境",
+            "enter_target": "目标环境",
             "title": "触发当前流水线 #{pipelineId} 的部署",
             "trigger": "部署",
             "variables": {
                 "add": "添加变量",
                 "desc": "指定传递到流水线中的变量。相同名称的变量会被覆盖。",
                 "name": "变量名",
-                "title": "添加流水线变量",
+                "title": "高级变量",
                 "value": "变量值",
                 "delete": "删除变量"
             },
-            "enter_task": "部署任务"
+            "enter_task": "发布方式"
         },
         "enable": {
             "disabled": "已禁用",
@@ -247,7 +247,7 @@
                 "add": "添加变量",
                 "desc": "指定要添加在流水线中使用的变量，相同名称的变量将被覆盖。",
                 "name": "变量名称",
-                "title": "添加流水线变量",
+                "title": "高级变量",
                 "value": "变量值",
                 "delete": "删除变量"
             },
@@ -268,20 +268,20 @@
                 "deploy": "部署",
                 "log_auto_scroll": "启用自动滚动",
                 "log_auto_scroll_off": "禁用自动滚动",
-                "log_download": "下载",
-                "restart": "重启",
-                "restart_success": "流水线已重启",
-                "log_delete": "删除",
+                "log_download": "下载日志",
+                "restart": "重新运行",
+                "restart_success": "已重新运行流水线",
+                "log_delete": "删除日志",
                 "skipped": "此步骤已被跳过。",
                 "expand_all": "展开全部",
                 "collapse_all": "收起全部"
             },
-            "config": "配置",
+            "config": "运行配置",
             "errors": "错误",
             "event": {
                 "cron": "计划任务",
                 "deploy": "部署",
-                "manual": "手动",
+                "manual": "手动触发",
                 "pr": "合并请求",
                 "push": "推送",
                 "tag": "标签",
@@ -289,13 +289,13 @@
                 "pr_closed": "拉取请求已合并/关闭",
                 "pr_metadata": "拉取请求元数据已改变"
             },
-            "exit_code": "退出代码 {exitCode}",
+            "exit_code": "退出码 {exitCode}",
             "files": "修改的文件",
             "loading": "载入中…",
             "log_download_error": "下载日志文件时发生了错误",
-            "log_title": "步骤日志",
+            "log_title": "执行日志",
             "no_files": "没有文件修改。",
-            "no_pipeline_steps": "没有流水线步骤可用！",
+            "no_pipeline_steps": "暂无执行步骤",
             "no_pipelines": "尚未启动过流水线。",
             "pipeline": "流水线 #{pipelineId}",
             "pipelines_for": "{branch} 分支的流水线",
@@ -309,7 +309,7 @@
                 "declined": "该流水线已被拒绝！",
                 "review": "审查变更"
             },
-            "show_errors": "显示错误",
+            "show_errors": "查看错误",
             "status": {
                 "blocked": "已屏蔽",
                 "declined": "已拒绝",
@@ -325,9 +325,9 @@
                 "canceled": "已取消"
             },
             "step_not_started": "该步骤尚未启动。",
-            "tasks": "任务",
+            "tasks": "执行任务",
             "warnings": "警告",
-            "we_got_some_errors": "哦不，发生了一些错误！",
+            "we_got_some_errors": "流水线执行出错",
             "no_logs": "无日志",
             "created": "创建于：{created}",
             "debug": {
@@ -352,7 +352,9 @@
             "version": "此流水线在该 Woodpecker 版本上执行。",
             "version_header": "Woodpecker 版本",
             "parse_errors": "解析错误",
-            "runtime_errors": "运行时错误"
+            "runtime_errors": "运行时错误",
+            "source_title": "触发来源",
+            "steps_title": "执行步骤"
         },
         "pull_requests": "合并请求",
         "settings": {
@@ -533,7 +535,53 @@
                 "show": "显示所有秘密",
                 "value": "值"
             },
-            "settings": "设置"
+            "settings": "设置",
+            "parameters": {
+                "parameters": "运行参数",
+                "desc": "配置手动运行和部署时的输入选项，参数在当前仓库内静态维护。",
+                "add": "新增参数",
+                "show": "返回参数列表",
+                "none": "暂无参数",
+                "edit": "编辑参数",
+                "delete": "删除参数",
+                "save": "保存参数",
+                "created": "参数已创建",
+                "deleted": "参数已删除",
+                "event": {
+                    "title": "运行入口",
+                    "desc": "参数仅应用于所选运行入口。",
+                    "manual": "手动运行",
+                    "deployment": "从构建记录部署"
+                },
+                "name": {
+                    "name": "参数名称",
+                    "placeholder": "例如 BUILD_SERVICES"
+                },
+                "type": {
+                    "type": "输入类型",
+                    "string": "文本",
+                    "number": "数字",
+                    "boolean": "开关",
+                    "choice": "下拉单选",
+                    "multi_choice": "复选框多选"
+                },
+                "description": {
+                    "description": "说明",
+                    "placeholder": "说明这个参数的用途"
+                },
+                "options": {
+                    "options": "可选值",
+                    "desc": "每行一个选项。多选值使用逗号连接，选项本身不能包含逗号。"
+                },
+                "default": "默认值",
+                "no_default": "不设置默认值",
+                "required": "必填项",
+                "order": {
+                    "order": "显示顺序",
+                    "desc": "数值越小，显示越靠前。"
+                },
+                "saved": "参数已保存"
+            }
         },
         "user_none": "该组织/用户尚无项目",
         "visibility": {
@@ -551,7 +599,28 @@
                 "desc": "只有Woodpecker的登录用户可以看到这个项目。"
             }
         },
-        "refresh": "刷新仓库列表"
+        "refresh": "刷新仓库列表",
+        "parameters": {
+            "invalid": "请填写必填项，并选择有效的参数。",
+            "load_failed": "参数加载失败，请重试。",
+            "select_placeholder": "请选择",
+            "manual_eyebrow": "手动运行",
+            "manual_description": "选择代码分支，配置本次运行所需的服务与参数。",
+            "message_placeholder": "可填写本次运行的备注",
+            "deployment_eyebrow": "部署",
+            "deploy_heading": "从流水线 #{number} 部署",
+            "deploy_description": "复用所选运行的来源，选择本次部署的服务、环境和发布方式。",
+            "commit": "提交",
+            "source_number": "来源 #{number}",
+            "services": "服务选择",
+            "auto_deploy": "构建成功后自动发布",
+            "auto_deploy_target": "自动发布环境",
+            "testing": "测试环境",
+            "production": "生产环境",
+            "hot": "热更",
+            "cold": "冷更",
+            "close": "关闭"
+        }
     },
     "repos": "仓库",
     "repositories": {
@@ -804,5 +873,8 @@
     "delete": "删除",
     "allowed_orgs": "允许的组织",
     "allowed_orgs_desc": "指定允许其成员通过此代码托管平台登录的组织，作为全局 WOODPECKER_ORGS 设置的补充。",
-    "allowed_orgs_placeholder": "组织名称"
+    "allowed_orgs_placeholder": "组织名称",
+    "branding": {
+        "name": "Woodpecker"
+    }
 }

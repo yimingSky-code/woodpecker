@@ -1,28 +1,28 @@
 <template>
-  <Container full-width class="md:min-h-xs flex grow-0 flex-col md:grow md:px-4">
-    <div class="flex min-h-0 w-full grow flex-wrap-reverse md:flex-nowrap md:gap-4">
+  <Container full-width class="pipeline-task-container">
+    <div class="pipeline-task-layout">
       <PipelineStepList
         v-model:selected-step-id="selectedStepId"
         :class="{ 'hidden md:flex': pipeline!.status === 'blocked' }"
         :pipeline="pipeline!"
       />
 
-      <div class="relative flex grow basis-full items-start justify-center md:basis-auto">
+      <div class="pipeline-log-pane">
         <div v-if="showErrorPanel" class="mb-4 w-full md:mb-auto">
-          <Panel>
-            <div class="flex flex-col items-center gap-4 text-center">
-              <Icon name="status-error" class="text-wp-error-100 h-16 w-16" size="1.5rem" />
-              <span class="text-xl">{{ $t('repo.pipeline.we_got_some_errors') }}</span>
+          <Panel class="pipeline-state-card">
+            <div class="pipeline-state-content flex flex-col items-center gap-4 text-center">
+              <Icon name="status-error" class="text-wp-error-100 h-10 w-10" size="1.5rem" />
+              <span class="pipeline-state-title">{{ $t('repo.pipeline.we_got_some_errors') }}</span>
               <Button color="red" :text="$t('repo.pipeline.show_errors')" :to="{ name: 'repo-pipeline-errors' }" />
             </div>
           </Panel>
         </div>
 
         <div v-else-if="pipeline!.status === 'blocked'" class="mb-4 w-full md:mb-auto">
-          <Panel>
-            <div class="flex flex-col items-center gap-4">
-              <Icon name="status-blocked" size="1.5rem" class="h-16 w-16" />
-              <span class="text-xl">{{ $t('repo.pipeline.protected.awaits') }}</span>
+          <Panel class="pipeline-state-card">
+            <div class="pipeline-state-content flex flex-col items-center gap-4">
+              <Icon name="status-blocked" size="1.5rem" class="h-10 w-10" />
+              <span class="pipeline-state-title">{{ $t('repo.pipeline.protected.awaits') }}</span>
               <div v-if="repoPermissions!.push" class="flex flex-wrap items-center justify-center gap-2">
                 <Button
                   color="green"
@@ -42,10 +42,10 @@
         </div>
 
         <div v-else-if="pipeline!.status === 'declined'" class="mb-4 w-full md:mb-auto">
-          <Panel>
-            <div class="flex flex-col items-center gap-4">
-              <Icon name="status-declined" size="1.5rem" class="text-wp-error-100 h-16 w-16" />
-              <p class="text-xl">{{ $t('repo.pipeline.protected.declined') }}</p>
+          <Panel class="pipeline-state-card">
+            <div class="pipeline-state-content flex flex-col items-center gap-4">
+              <Icon name="status-declined" size="1.5rem" class="text-wp-error-100 h-10 w-10" />
+              <p class="pipeline-state-title">{{ $t('repo.pipeline.protected.declined') }}</p>
             </div>
           </Panel>
         </div>

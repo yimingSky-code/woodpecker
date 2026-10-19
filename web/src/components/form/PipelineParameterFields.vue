@@ -16,7 +16,7 @@
         <NSelect
           v-if="parameter.type === 'choice'"
           :value="value(parameter) || null"
-          :options="parameter.options.map((option) => ({ value: option, label: option }))"
+          :options="parameter.options.map((option) => ({ value: option, label: optionLabel(parameter, option) }))"
           :placeholder="$t('repo.parameters.select_placeholder')"
           :input-props="{ 'aria-label': label(parameter) }"
           clearable
@@ -77,9 +77,23 @@ const touched = ref(new Set<string>());
 const label = (parameter: Parameter) => {
   if (parameter.name === 'deploy_to') return i18n.t('repo.deploy_pipeline.enter_target');
   if (parameter.name === 'deploy_task') return i18n.t('repo.deploy_pipeline.enter_task');
+  if (parameter.name === 'BUILD_SERVICES') return i18n.t('repo.parameters.services');
+  if (parameter.name === 'AUTO_DEPLOY') return i18n.t('repo.parameters.auto_deploy');
+  if (parameter.name === 'AUTO_DEPLOY_TARGET') return i18n.t('repo.parameters.auto_deploy_target');
   const text = parameter.name.toLowerCase().replaceAll('_', ' ');
   return text.charAt(0).toUpperCase() + text.slice(1);
 };
+function optionLabel(parameter: Parameter, option: string): string {
+  if (parameter.name === 'deploy_to' || parameter.name === 'AUTO_DEPLOY_TARGET') {
+    if (option === 'test' || option === 'testing') return `${i18n.t('repo.parameters.testing')} · ${option}`;
+    if (option === 'prod' || option === 'production') return `${i18n.t('repo.parameters.production')} · ${option}`;
+  }
+  if (parameter.name === 'deploy_task') {
+    if (option === 'hot') return `${i18n.t('repo.parameters.hot')} · ${option}`;
+    if (option === 'cold') return `${i18n.t('repo.parameters.cold')} · ${option}`;
+  }
+  return option;
+}
 const value = (parameter: Parameter) =>
   Object.hasOwn(props.modelValue, parameter.name) ? props.modelValue[parameter.name] : '';
 const valid = computed(() => props.parameters.every((parameter) => isParameterValueValid(parameter, value(parameter))));

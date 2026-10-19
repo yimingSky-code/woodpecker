@@ -1,13 +1,14 @@
 <template>
   <div
     v-if="pipeline"
-    class="fixed top-0 left-0 flex h-full w-full flex-col pt-10 md:pt-0"
+    class="pipeline-log-view fixed top-0 left-0 flex h-full w-full flex-col pt-10 md:pt-0"
     :class="{
       'md:absolute': !fullscreen,
+      'is-fullscreen': fullscreen,
     }"
   >
     <div
-      class="code-box-log flex grow flex-col overflow-hidden p-0! md:mt-0"
+      class="pipeline-terminal code-box-log flex grow flex-col overflow-hidden p-0! md:mt-0"
       :class="{
         'md:rounded-md!': !fullscreen,
       }"
@@ -15,13 +16,14 @@
       @mouseleave="showActions = false"
     >
       <div
-        class="bg-wp-code-100 fixed top-0 left-0 flex w-full flex-row items-center px-4 py-2 md:relative md:top-auto md:left-auto"
+        class="pipeline-log-toolbar bg-wp-code-100 fixed top-0 left-0 flex w-full flex-row items-center px-4 py-2 md:relative md:top-auto md:left-auto"
       >
         <span class="text-wp-code-text-alt-100 text-base font-bold">
           <span class="md:display-unset hidden">{{ $t('repo.pipeline.log_title') }}</span>
           <span class="md:hidden">{{ step?.name }}</span>
         </span>
 
+        <span v-if="step" class="pipeline-log-step hidden md:inline-flex">{{ step.name }}</span>
         <div class="ml-auto flex flex-row items-center gap-x-2">
           <IconButton
             :title="fullscreen ? $t('exit_fullscreen') : $t('fullscreen')"
@@ -74,7 +76,7 @@
       <div
         v-show="hasLogs && loadedLogs && (log?.length || 0) > 0"
         ref="consoleElement"
-        class="grid w-full max-w-full grow scroll-pt-8 auto-rows-min grid-cols-[min-content_minmax(0,1fr)_min-content] overflow-x-hidden overflow-y-auto p-4 text-xs md:text-sm"
+        class="pipeline-console grid w-full max-w-full grow scroll-pt-8 auto-rows-min grid-cols-[min-content_minmax(0,1fr)_min-content] overflow-x-hidden overflow-y-auto p-4 text-xs md:text-sm"
       >
         <div v-for="group in groupedLogs" :key="group.id" class="contents">
           <div
@@ -151,7 +153,7 @@
 
       <div
         v-if="step?.finished !== undefined"
-        class="text-md bg-wp-code-100 text-wp-code-text-alt-100 flex w-full items-center p-4 font-bold"
+        class="pipeline-log-result text-md bg-wp-code-100 text-wp-code-text-alt-100 flex w-full items-center p-4 font-bold"
       >
         <PipelineStatusIcon :status="step.state" class="h-4! w-4!" />
         <span v-if="step?.error" class="px-2">{{ step.error }}</span>

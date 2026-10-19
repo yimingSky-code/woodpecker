@@ -1,11 +1,10 @@
 <template>
-  <nav
-    class="text-neutral-content border-wp-background-400 dark:border-wp-background-100 bg-wp-primary-200 text-wp-primary-text-100 dark:bg-wp-primary-300 flex border-b p-4 font-bold"
-  >
-    <div class="flex items-center space-x-2">
-      <router-link :to="{ name: 'home' }" class="-my-2 flex flex-col px-2">
-        <WoodpeckerLogo class="h-8 w-8" />
-        <span class="text-xs" :title="version?.current">{{ version?.currentShort }}</span>
+  <nav class="navbar-shell">
+    <div class="navbar-main">
+      <router-link :to="{ name: 'home' }" class="navbar-brand">
+        <span class="navbar-brand-mark"><WoodpeckerLogo aria-hidden="true" /></span>
+        <span class="navbar-brand-title">{{ $t('branding.name') }}</span>
+        <span class="navbar-version" :title="version?.current">{{ version?.currentShort }}</span>
       </router-link>
       <router-link v-if="user" :to="{ name: 'repos' }" class="navbar-clickable navbar-link">
         <span class="flex md:hidden">{{ $t('repos') }}</span>
@@ -18,7 +17,7 @@
         $t('api')
       }}</a>
     </div>
-    <div class="-m-1.5 ml-auto flex items-center space-x-2">
+    <div class="navbar-actions">
       <IconButton
         v-if="user?.admin"
         class="navbar-icon relative"
@@ -33,13 +32,7 @@
       <IconButton v-if="user" :to="{ name: 'user' }" :title="$t('user.settings.settings')" class="navbar-icon p-1.5!">
         <img v-if="user && user.avatar_url" class="rounded-md" :src="`${user.avatar_url}`" />
       </IconButton>
-      <Button
-        v-else
-        :text="$t('login')"
-        :to="{ name: 'login' }"
-        class="navbar-link !text-wp-primary-text-100 bg-wp-primary-200 dark:bg-wp-primary-300 !border-transparent"
-        @click="saveRedirect"
-      />
+      <Button v-else :text="$t('login')" :to="{ name: 'login' }" class="navbar-link" @click="saveRedirect" />
     </div>
   </nav>
 </template>
@@ -74,17 +67,106 @@ function saveRedirect() {
 </script>
 
 <style scoped>
-@reference '~/tailwind.css';
-
+.navbar-shell {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+  gap: 24px;
+  min-height: 66px;
+  padding: 10px 28px;
+  border-bottom: 1px solid var(--wp-control-neutral-200);
+  background: var(--wp-background-100);
+  color: var(--wp-text-200);
+  font-size: 13px;
+  font-weight: 500;
+}
+.navbar-main,
+.navbar-actions,
+.navbar-brand {
+  display: flex;
+  align-items: center;
+}
+.navbar-main {
+  gap: 8px;
+  min-width: 0;
+}
+.navbar-actions {
+  margin-left: auto;
+  gap: 6px;
+}
+.navbar-brand {
+  gap: 10px;
+  margin-right: 22px;
+  flex-shrink: 0;
+}
+.navbar-brand-mark {
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 36px;
+  border-radius: 10px;
+  background: var(--color-int-wp-primary-600);
+}
+.navbar-brand-mark :deep(svg) {
+  width: 22px;
+  height: 26px;
+}
+.navbar-brand-title {
+  font-size: 16px;
+  font-weight: 650;
+  letter-spacing: -0.035em;
+}
+.navbar-version {
+  color: var(--wp-text-alt-100);
+  font-size: 10px;
+  font-weight: 500;
+  padding: 2px 5px;
+  border: 1px solid var(--wp-control-neutral-200);
+  border-radius: 4px;
+}
 .navbar-icon {
-  @apply h-11 w-11 rounded-md p-2.5 hover:bg-black/20 dark:hover:bg-white/5;
+  width: 34px;
+  height: 34px;
+  padding: 7px;
+  border-radius: 8px;
+  color: var(--wp-text-alt-100);
 }
-
+.navbar-icon:hover,
+.navbar-link:hover {
+  background: var(--wp-control-neutral-100);
+  color: var(--wp-text-200);
+}
 .navbar-icon :deep(svg) {
-  @apply h-full w-full;
+  width: 100%;
+  height: 100%;
 }
-
 .navbar-link {
-  @apply -my-1 rounded-md px-3 py-2 hover:bg-black/20 dark:hover:bg-white/5;
+  padding: 8px 12px;
+  border-radius: 7px;
+  color: var(--wp-text-alt-100);
+}
+.navbar-main :deep(.navbar-link.router-link-active) {
+  color: var(--color-int-wp-primary-600);
+  background: color-mix(in srgb, var(--wp-background-100) 93%, var(--color-int-wp-primary-400));
+}
+@media (max-width: 600px) {
+  .navbar-shell {
+    gap: 8px;
+    min-height: 58px;
+    padding: 8px 16px;
+  }
+  .navbar-brand {
+    gap: 8px;
+    margin-right: 4px;
+  }
+  .navbar-brand-title {
+    font-size: 14px;
+  }
+  .navbar-version {
+    display: none;
+  }
+  .navbar-link {
+    padding-inline: 8px;
+  }
 }
 </style>

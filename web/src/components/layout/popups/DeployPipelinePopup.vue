@@ -8,11 +8,8 @@
         :bordered="false"
         content-style="padding: 0"
         header-style="padding: 24px var(--ops-dialog-gutter) 20px"
-        footer-style="padding: 18px var(--ops-dialog-gutter)"
-        :segmented="{ footer: 'soft' }"
-        closable
+        footer-style="padding: 16px var(--ops-dialog-gutter); border-top: 1px solid var(--wp-control-neutral-200)"
         class="ops-dialog"
-        @close="$emit('close')"
       >
         <template #header>
           <div class="ops-heading">
@@ -26,6 +23,11 @@
               {{ $t('repo.parameters.source_number', { number: pipelineNumber }) }}
             </NTag>
           </div>
+        </template>
+        <template #header-extra>
+          <NButton quaternary circle size="small" :aria-label="$t('repo.parameters.close')" @click="$emit('close')">
+            <template #icon><Icon name="close" /></template>
+          </NButton>
         </template>
         <div v-if="loading" class="flex justify-center py-12"><NSpin size="large" /></div>
         <NAlert v-else-if="loadError" role="alert" type="error">{{ $t('repo.parameters.load_failed') }}</NAlert>
@@ -117,6 +119,7 @@ import {
 import { computed, ref, toRef, useId, watch } from 'vue';
 import { useRouter } from 'vue-router';
 
+import Icon from '~/components/atomic/Icon.vue';
 import PipelineParameterFields from '~/components/form/PipelineParameterFields.vue';
 import OpsUiProvider from '~/components/ops/OpsUiProvider.vue';
 import OpsVariableEditor from '~/components/ops/OpsVariableEditor.vue';

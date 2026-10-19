@@ -82,7 +82,7 @@ const selectedLocale = computed<string>({
     storedLocale.value = _selectedLocale;
   },
   get() {
-    return storedLocale.value;
+    return locale.value;
   },
 });
 

@@ -351,7 +351,9 @@
         "metadata_exec_title": "Re-run pipeline locally",
         "metadata_exec_desc": "Download the metadata of this pipeline to run it locally. This allows you to fix problems and test changes before committing them. The Woodpecker CLI must be installed locally in the same version as the server."
       },
-      "view": "View pipeline"
+      "view": "View pipeline",
+      "source_title": "Run source",
+      "steps_title": "Execution steps"
     },
     "parameters": {
       "invalid": "Complete the required fields and choose valid values.",
@@ -364,7 +366,15 @@
       "deploy_heading": "Deploy from run #{number}",
       "deploy_description": "Choose the services and target environment for this deployment.",
       "commit": "Commit",
-      "source_number": "Run #{number}"
+      "source_number": "Run #{number}",
+      "services": "Services",
+      "auto_deploy": "Deploy automatically after build",
+      "auto_deploy_target": "Automatic deployment environment",
+      "testing": "Testing",
+      "production": "Production",
+      "hot": "Hot update",
+      "cold": "Cold update",
+      "close": "Close"
     }
   },
   "org": {
@@ -707,5 +717,8 @@
   "exit_fullscreen": "Exit fullscreen",
   "help_translating": "You can help translate Woodpecker into your language on {0}.",
   "weblate": "our Weblate",
-  "disabled": "Disabled"
+  "disabled": "Disabled",
+  "branding": {
+    "name": "Woodpecker"
+  }
 }
