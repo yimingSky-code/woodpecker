@@ -1,58 +1,68 @@
 <template>
-  <Panel v-if="!loading && !loadError">
-    <form @submit.prevent="triggerManualPipeline">
-      <span class="text-wp-text-100 text-xl">{{ $t('repo.manual_pipeline.title') }}</span>
-
-      <InputField v-slot="{ id }" :label="$t('repo.manual_pipeline.message.title')">
-        <span class="text-wp-text-alt-100 mb-2 text-sm">{{ $t('repo.manual_pipeline.message.desc') }}</span>
-        <TextField :id="id" v-model="payload.message" :placeholder="$t('repo.manual_pipeline.message.title')" />
-      </InputField>
-
-      <InputField v-slot="{ id }" :label="$t('repo.manual_pipeline.select_branch')">
-        <SelectField :id="id" v-model="payload.branch" :options="branches" required />
-      </InputField>
-
-      <PipelineParameterFields
-        v-model="parameterValues"
-        :parameters="parameters"
-        @update:is-valid="parametersValid = $event"
-      />
-
-      <InputField v-slot="{ id }" :label="$t('repo.manual_pipeline.variables.title')">
-        <span class="text-wp-text-alt-100 mb-2 text-sm">{{ $t('repo.manual_pipeline.variables.desc') }}</span>
-        <KeyValueEditor
-          :id="id"
-          v-model="payload.variables"
-          :key-placeholder="$t('repo.manual_pipeline.variables.name')"
-          :value-placeholder="$t('repo.manual_pipeline.variables.value')"
-          :delete-title="$t('repo.manual_pipeline.variables.delete')"
-          @update:is-valid="isVariablesValid = $event"
-        />
-      </InputField>
-
-      <Button type="submit" :text="$t('repo.manual_pipeline.trigger')" :disabled="!isFormValid" />
-    </form>
-  </Panel>
-  <p v-else-if="loadError" role="alert">{{ $t('repo.parameters.load_failed') }}</p>
-  <div v-else class="text-wp-text-100 flex justify-center">
-    <Icon name="spinner" />
-  </div>
+  <OpsUiProvider>
+    <NCard v-if="!loading && !loadError" :bordered="false" size="large" class="ops-run-card">
+      <div class="ops-eyebrow">{{ $t('repo.parameters.manual_eyebrow') }}</div>
+      <h1 class="ops-title">{{ $t('repo.manual_pipeline.title') }}</h1>
+      <p class="ops-description">{{ $t('repo.parameters.manual_description') }}</p>
+      <NForm label-placement="top" @submit.prevent="triggerManualPipeline">
+        <div class="ops-form-grid">
+          <NFormItem :label="$t('repo.manual_pipeline.select_branch')" required>
+            <NSelect
+              v-model:value="payload.branch"
+              :options="branches.map((branch) => ({ label: branch.text, value: branch.value }))"
+              :input-props="{ 'aria-label': $t('repo.manual_pipeline.select_branch') }"
+              filterable
+            />
+          </NFormItem>
+          <NFormItem :label="$t('repo.manual_pipeline.message.title')">
+            <NInput
+              v-model:value="payload.message"
+              :placeholder="$t('repo.parameters.message_placeholder')"
+              :input-props="{ 'aria-label': $t('repo.manual_pipeline.message.title') }"
+            />
+          </NFormItem>
+        </div>
+        <div v-if="parameters.length" class="ops-section">
+          <PipelineParameterFields
+            v-model="parameterValues"
+            :parameters="parameters"
+            @update:is-valid="parametersValid = $event"
+          />
+        </div>
+        <NCollapse class="ops-section">
+          <NCollapseItem name="variables" display-directive="show" :title="$t('repo.manual_pipeline.variables.title')">
+            <p class="ops-description">{{ $t('repo.manual_pipeline.variables.desc') }}</p>
+            <OpsVariableEditor
+              v-model="payload.variables"
+              :key-placeholder="$t('repo.manual_pipeline.variables.name')"
+              :value-placeholder="$t('repo.manual_pipeline.variables.value')"
+              :delete-title="$t('repo.manual_pipeline.variables.delete')"
+              @update:is-valid="isVariablesValid = $event"
+            />
+          </NCollapseItem>
+        </NCollapse>
+        <div class="ops-actions ops-section">
+          <NButton attr-type="submit" type="primary" size="large" :loading="submitting" :disabled="!isFormValid">
+            {{ $t('repo.manual_pipeline.trigger') }}
+          </NButton>
+        </div>
+      </NForm>
+    </NCard>
+    <NAlert v-else-if="loadError" role="alert" type="error">{{ $t('repo.parameters.load_failed') }}</NAlert>
+    <div v-else class="flex justify-center py-12"><NSpin size="large" /></div>
+  </OpsUiProvider>
 </template>
 
 <script lang="ts" setup>
 import { useNotification } from '@kyvg/vue3-notification';
+import { NAlert, NButton, NCard, NCollapse, NCollapseItem, NForm, NFormItem, NInput, NSelect, NSpin } from 'naive-ui';
 import { computed, onMounted, ref } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useRouter } from 'vue-router';
 
-import Button from '~/components/atomic/Button.vue';
-import Icon from '~/components/atomic/Icon.vue';
-import InputField from '~/components/form/InputField.vue';
-import KeyValueEditor from '~/components/form/KeyValueEditor.vue';
-import SelectField from '~/components/form/SelectField.vue';
-import TextField from '~/components/form/TextField.vue';
-import Panel from '~/components/layout/Panel.vue';
 import PipelineParameterFields from '~/components/form/PipelineParameterFields.vue';
+import OpsUiProvider from '~/components/ops/OpsUiProvider.vue';
+import OpsVariableEditor from '~/components/ops/OpsVariableEditor.vue';
 import type { Parameter } from '~/lib/api/types';
 import { initialParameterValues, parametersForEvent } from '~/lib/pipelineParameters';
 import useApiClient from '~/compositions/useApiClient';

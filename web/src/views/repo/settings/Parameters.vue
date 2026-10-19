@@ -1,169 +1,161 @@
 <template>
-  <Settings
-    :title="$t('repo.settings.parameters.parameters')"
-    :description="$t('repo.settings.parameters.desc')"
-    docs-url="docs/usage/parameters"
-  >
-    <template #headerActions>
-      <Button
-        v-if="selectedParameter"
-        start-icon="back"
-        :text="$t('repo.settings.parameters.show')"
-        @click="selectedParameter = undefined"
-      />
-      <Button
-        v-else
-        start-icon="plus"
-        :text="$t('repo.settings.parameters.add')"
-        @click="selectedParameter = { type: 'string', event: 'manual' }"
-      />
-    </template>
-
-    <div v-if="!selectedParameter" class="text-wp-text-100 space-y-4">
-      <ListItem
-        v-for="parameter in parameters"
-        :key="parameter.id"
-        class="bg-wp-background-200! dark:bg-wp-background-200! items-center"
-      >
-        <span class="grid w-full grid-cols-4">
-          <span>{{ parameter.name }}</span>
-          <span>{{
-            parameter.event === 'deployment'
-              ? $t('repo.settings.parameters.event.deployment')
-              : $t('repo.settings.parameters.event.manual')
-          }}</span>
-          <span class="md:display-unset hidden">{{ parameterTypeLabel(parameter.type) }}</span>
-          <span class="md:display-unset hidden truncate">{{ parameter.description }}</span>
-        </span>
-        <div class="flex items-center gap-2">
-          <IconButton
-            icon="edit"
-            class="h-8 w-8"
-            :title="$t('repo.settings.parameters.edit')"
-            @click="selectedParameter = { ...parameter, options: [...(parameter.options ?? [])] }"
-          />
-          <IconButton
-            icon="trash"
-            class="hover:text-wp-error-100 h-8 w-8"
-            :is-loading="isDeleting"
-            :title="$t('repo.settings.parameters.delete')"
-            @click="deleteParameter(parameter)"
-          />
+  <OpsUiProvider>
+    <Settings
+      :title="$t('repo.settings.parameters.parameters')"
+      :description="$t('repo.settings.parameters.desc')"
+      docs-url="docs/usage/parameters"
+    >
+      <template #headerActions>
+        <NButton v-if="selectedParameter" @click="selectedParameter = undefined">
+          {{ $t('repo.settings.parameters.show') }}
+        </NButton>
+        <NButton v-else type="primary" @click="selectedParameter = { type: 'string', event: 'manual' }">
+          {{ $t('repo.settings.parameters.add') }}
+        </NButton>
+      </template>
+      <div v-if="!selectedParameter">
+        <div v-for="parameter in parameters" :key="parameter.id" class="ops-parameter-row">
+          <div class="min-w-0">
+            <div class="ops-parameter-name">{{ parameter.name }}</div>
+            <div class="ops-parameter-meta">
+              <NTag :bordered="false" size="small" :type="parameter.event === 'deployment' ? 'success' : 'info'">
+                {{
+                  parameter.event === 'deployment'
+                    ? $t('repo.settings.parameters.event.deployment')
+                    : $t('repo.settings.parameters.event.manual')
+                }}
+              </NTag>
+              <NTag :bordered="false" size="small">{{ parameterTypeLabel(parameter.type) }}</NTag>
+            </div>
+            <p v-if="parameter.description" class="ops-field-help">{{ parameter.description }}</p>
+          </div>
+          <div class="flex shrink-0 gap-2">
+            <NButton
+              quaternary
+              circle
+              :title="$t('repo.settings.parameters.edit')"
+              :aria-label="$t('repo.settings.parameters.edit')"
+              @click="selectedParameter = { ...parameter, options: [...(parameter.options ?? [])] }"
+            >
+              <template #icon><Icon name="edit" class="h-4! w-4!" /></template>
+            </NButton>
+            <NButton
+              quaternary
+              circle
+              type="error"
+              :loading="isDeleting"
+              :title="$t('repo.settings.parameters.delete')"
+              :aria-label="$t('repo.settings.parameters.delete')"
+              @click="deleteParameter(parameter)"
+            >
+              <template #icon><Icon name="trash" class="h-4! w-4!" /></template>
+            </NButton>
+          </div>
         </div>
-      </ListItem>
-
-      <div v-if="loading" class="flex justify-center">
-        <Icon name="spinner" class="animate-spin" />
+        <div v-if="loading" class="flex justify-center py-8"><NSpin /></div>
+        <NEmpty v-else-if="parameters?.length === 0" :description="$t('repo.settings.parameters.none')" class="py-8" />
       </div>
-      <div v-else-if="parameters?.length === 0" class="ml-2">{{ $t('repo.settings.parameters.none') }}</div>
-    </div>
-
-    <div v-else class="space-y-4">
-      <form @submit.prevent="saveParameter">
-        <InputField v-slot="{ id }" :label="$t('repo.settings.parameters.name.name')">
-          <TextField
-            :id="id"
-            v-model="selectedParameter.name"
-            :placeholder="$t('repo.settings.parameters.name.placeholder')"
-            required
-          />
-        </InputField>
-
-        <InputField :label="$t('repo.settings.parameters.event.title')">
-          <template #default="{ id }">
-            <SelectField :id="id" v-model="selectedParameterEvent" :options="eventOptions" />
-          </template>
-          <template #description>{{ $t('repo.settings.parameters.event.desc') }}</template>
-        </InputField>
-        <InputField v-slot="{ id }" :label="$t('repo.settings.parameters.type.type')">
-          <SelectField :id="id" v-model="selectedParameterType" :options="parameterTypeOptions" />
-        </InputField>
-
-        <InputField v-slot="{ id }" :label="$t('repo.settings.parameters.description.description')">
-          <TextField
-            :id="id"
-            v-model="selectedParameter.description"
+      <NForm v-else label-placement="top" @submit.prevent="saveParameter">
+        <div class="ops-form-grid">
+          <NFormItem :label="$t('repo.settings.parameters.name.name')" required>
+            <NInput
+              v-model:value="selectedParameter.name"
+              :placeholder="$t('repo.settings.parameters.name.placeholder')"
+              :input-props="{ required: true, 'aria-label': $t('repo.settings.parameters.name.name') }"
+            />
+          </NFormItem>
+          <NFormItem :label="$t('repo.settings.parameters.event.title')">
+            <NSelect
+              v-model:value="selectedParameterEvent"
+              :options="eventOptions"
+              :input-props="{ 'aria-label': $t('repo.settings.parameters.event.title') }"
+            />
+          </NFormItem>
+          <NFormItem :label="$t('repo.settings.parameters.type.type')">
+            <NSelect
+              v-model:value="selectedParameterType"
+              :options="parameterTypeOptions"
+              :input-props="{ 'aria-label': $t('repo.settings.parameters.type.type') }"
+            />
+          </NFormItem>
+          <NFormItem :label="$t('repo.settings.parameters.order.order')">
+            <NInputNumber
+              v-model:value="selectedParameterOrder"
+              :input-props="{ 'aria-label': $t('repo.settings.parameters.order.order') }"
+              class="w-full"
+            />
+          </NFormItem>
+        </div>
+        <NFormItem :label="$t('repo.settings.parameters.description.description')">
+          <NInput
+            v-model:value="selectedParameter.description"
             :placeholder="$t('repo.settings.parameters.description.placeholder')"
+            type="textarea"
+            :autosize="{ minRows: 2, maxRows: 4 }"
+            :input-props="{ 'aria-label': $t('repo.settings.parameters.description.description') }"
           />
-        </InputField>
-
-        <InputField
+        </NFormItem>
+        <NFormItem
           v-if="selectedParameter.type === 'choice' || selectedParameter.type === 'multi_choice'"
-          v-slot="{ id }"
           :label="$t('repo.settings.parameters.options.options')"
+          required
         >
-          <span class="text-wp-text-alt-100 mb-2 text-sm">{{ $t('repo.settings.parameters.options.desc') }}</span>
-          <TextField :id="id" v-model="selectedParameterOptionsText" :lines="4" required />
-        </InputField>
-
-        <InputField v-slot="{ id }" :label="$t('repo.settings.parameters.default')">
-          <SelectField
+          <div class="w-full">
+            <NInput
+              v-model:value="selectedParameterOptionsText"
+              type="textarea"
+              :autosize="{ minRows: 3, maxRows: 6 }"
+              :input-props="{ required: true, 'aria-label': $t('repo.settings.parameters.options.options') }"
+            />
+            <p class="ops-field-help">{{ $t('repo.settings.parameters.options.desc') }}</p>
+          </div>
+        </NFormItem>
+        <NFormItem :label="$t('repo.settings.parameters.default')">
+          <NSelect
             v-if="selectedParameter.type === 'choice'"
-            :id="id"
-            v-model="selectedParameterDefault"
+            v-model:value="selectedParameterDefault"
             :options="defaultChoiceOptions"
+            :input-props="{ 'aria-label': $t('repo.settings.parameters.default') }"
           />
           <MultiSelectField
             v-else-if="selectedParameter.type === 'multi_choice'"
-            :id="id"
             v-model="selectedParameterDefault"
             :label="$t('repo.settings.parameters.default')"
             :options="selectedParameter.options ?? []"
+            class="w-full"
           />
-          <Checkbox
-            v-else-if="selectedParameter.type === 'boolean'"
-            v-model="selectedParameterDefaultBoolean"
-            :label="$t('repo.settings.parameters.default')"
-          />
-          <TextField
+          <NCheckbox v-else-if="selectedParameter.type === 'boolean'" v-model:checked="selectedParameterDefaultBoolean">
+            {{ $t('repo.settings.parameters.default') }}
+          </NCheckbox>
+          <NInput
             v-else
-            :id="id"
-            v-model="selectedParameterDefault"
-            :type="selectedParameter.type === 'number' ? 'number' : 'text'"
+            v-model:value="selectedParameterDefault"
+            :input-props="{ 'aria-label': $t('repo.settings.parameters.default') }"
           />
-        </InputField>
-
-        <!-- a boolean always has a value, "required" would be meaningless -->
-        <Checkbox
-          v-if="selectedParameter.type !== 'boolean'"
-          v-model="selectedParameterRequired"
-          :label="$t('repo.settings.parameters.required')"
-        />
-
-        <InputField v-slot="{ id }" :label="$t('repo.settings.parameters.order.order')">
-          <span class="text-wp-text-alt-100 mb-2 text-sm">{{ $t('repo.settings.parameters.order.desc') }}</span>
-          <NumberField :id="id" v-model="selectedParameterOrder" />
-        </InputField>
-
-        <div class="flex gap-2">
-          <Button type="button" color="gray" :text="$t('cancel')" @click="selectedParameter = undefined" />
-          <Button
-            type="submit"
-            color="green"
-            :is-loading="isSaving"
-            :text="isEditingParameter ? $t('repo.settings.parameters.save') : $t('repo.settings.parameters.add')"
-          />
+        </NFormItem>
+        <NCheckbox v-if="selectedParameter.type !== 'boolean'" v-model:checked="selectedParameterRequired">
+          {{ $t('repo.settings.parameters.required') }}
+        </NCheckbox>
+        <div class="ops-actions ops-section">
+          <NButton @click="selectedParameter = undefined">{{ $t('cancel') }}</NButton>
+          <NButton attr-type="submit" type="primary" :loading="isSaving">
+            {{ isEditingParameter ? $t('repo.settings.parameters.save') : $t('repo.settings.parameters.add') }}
+          </NButton>
         </div>
-      </form>
-    </div>
-  </Settings>
+      </NForm>
+    </Settings>
+  </OpsUiProvider>
 </template>
 
 <script lang="ts" setup>
+import { NButton, NCheckbox, NEmpty, NForm, NFormItem, NInput, NInputNumber, NSelect, NSpin, NTag } from 'naive-ui';
 import { computed, ref } from 'vue';
 import { useI18n } from 'vue-i18n';
 
-import Button from '~/components/atomic/Button.vue';
 import Icon from '~/components/atomic/Icon.vue';
-import IconButton from '~/components/atomic/IconButton.vue';
-import ListItem from '~/components/atomic/ListItem.vue';
-import Checkbox from '~/components/form/Checkbox.vue';
-import InputField from '~/components/form/InputField.vue';
-import NumberField from '~/components/form/NumberField.vue';
 import MultiSelectField from '~/components/form/MultiSelectField.vue';
-import SelectField from '~/components/form/SelectField.vue';
-import TextField from '~/components/form/TextField.vue';
 import Settings from '~/components/layout/Settings.vue';
+import OpsUiProvider from '~/components/ops/OpsUiProvider.vue';
 import useApiClient from '~/compositions/useApiClient';
 import { useAsyncAction } from '~/compositions/useAsyncAction';
 import { requiredInject } from '~/compositions/useInjectProvide';
@@ -194,12 +186,12 @@ function parameterTypeLabel(type: ParameterType): string {
 
 const parameterTypeOptions = Object.entries(parameterTypeLabels).map(([type, label]) => ({
   value: type,
-  text: label,
+  label,
 }));
 
 const eventOptions = [
-  { value: 'manual', text: i18n.t('repo.settings.parameters.event.manual') },
-  { value: 'deployment', text: i18n.t('repo.settings.parameters.event.deployment') },
+  { value: 'manual', label: i18n.t('repo.settings.parameters.event.manual') },
+  { value: 'deployment', label: i18n.t('repo.settings.parameters.event.deployment') },
 ];
 const selectedParameterEvent = computed<string>({
   get: () => selectedParameter.value!.event || 'manual',
@@ -223,12 +215,12 @@ const selectedParameterType = computed<string>({
 });
 
 const selectedParameterOptions = computed(() =>
-  (selectedParameter.value?.options ?? []).map((option) => ({ value: option, text: option })),
+  (selectedParameter.value?.options ?? []).map((option) => ({ value: option, label: option })),
 );
 
 // leading empty entry so a previously picked default can be unset again
 const defaultChoiceOptions = computed(() => [
-  { value: '', text: i18n.t('repo.settings.parameters.no_default') },
+  { value: '', label: i18n.t('repo.settings.parameters.no_default') },
   ...selectedParameterOptions.value,
 ]);
 
@@ -272,9 +264,9 @@ const selectedParameterRequired = computed<boolean>({
   },
 });
 
-const selectedParameterOrder = computed<number>({
+const selectedParameterOrder = computed<number | null>({
   set(order) {
-    selectedParameter.value!.order = Number.isNaN(order) ? 0 : order;
+    selectedParameter.value!.order = order === null || Number.isNaN(order) ? 0 : order;
   },
   get() {
     return selectedParameter.value!.order ?? 0;

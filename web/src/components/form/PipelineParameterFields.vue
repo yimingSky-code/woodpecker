@@ -1,57 +1,71 @@
 <template>
   <div>
-    <InputField v-for="parameter in parameters" :key="parameter.name" :label="label(parameter)">
-      <template #description>{{ parameter.description }}</template>
-      <template #default="{ id }">
-        <SelectField
+    <NFormItem
+      v-for="parameter in parameters"
+      :key="parameter.name"
+      :label="label(parameter)"
+      :show-feedback="false"
+      :show-label="parameter.type !== 'boolean'"
+      :required="parameter.required"
+      :validation-status="
+        touched.has(parameter.name) && !isParameterValueValid(parameter, value(parameter)) ? 'error' : undefined
+      "
+      class="mb-6"
+    >
+      <div class="w-full">
+        <NSelect
           v-if="parameter.type === 'choice'"
-          :id="id"
-          :model-value="value(parameter)"
-          :options="[{ value: '', text: '—' }, ...parameter.options.map((option) => ({ value: option, text: option }))]"
-          :required="parameter.required"
-          @update:model-value="update(parameter, $event)"
+          :value="value(parameter) || null"
+          :options="parameter.options.map((option) => ({ value: option, label: option }))"
+          :placeholder="$t('repo.parameters.select_placeholder')"
+          :input-props="{ 'aria-label': label(parameter) }"
+          clearable
+          @update:value="update(parameter, $event ?? '')"
         />
         <MultiSelectField
           v-else-if="parameter.type === 'multi_choice'"
-          :id="id"
           :label="label(parameter)"
           :model-value="value(parameter)"
           :options="parameter.options"
           @update:model-value="update(parameter, $event)"
         />
-        <Checkbox
+        <NCheckbox
           v-else-if="parameter.type === 'boolean'"
-          :model-value="value(parameter) === 'true'"
-          :label="label(parameter)"
-          @update:model-value="update(parameter, String($event))"
+          :checked="value(parameter) === 'true'"
+          @update:checked="update(parameter, String($event))"
+        >
+          {{ label(parameter) }}
+        </NCheckbox>
+        <NInputNumber
+          v-else-if="parameter.type === 'number'"
+          :value="value(parameter) === '' ? null : Number(value(parameter))"
+          :show-button="false"
+          :input-props="{ 'aria-label': label(parameter) }"
+          class="w-full"
+          @update:value="update(parameter, $event === null ? '' : String($event))"
         />
-        <TextField
+        <NInput
           v-else
-          :id="id"
-          :model-value="value(parameter)"
-          :type="parameter.type === 'number' ? 'number' : 'text'"
-          :required="parameter.required"
-          :step="parameter.type === 'number' ? 'any' : undefined"
-          @update:model-value="update(parameter, String($event))"
+          :value="value(parameter)"
+          :input-props="{ 'aria-label': label(parameter) }"
+          @update:value="update(parameter, $event)"
         />
-      </template>
-    </InputField>
-    <p v-if="!valid" role="status" class="text-wp-text-alt-100 mb-4 text-sm">{{ $t('repo.parameters.invalid') }}</p>
+        <div v-if="parameter.description" class="ops-field-help">{{ parameter.description }}</div>
+      </div>
+    </NFormItem>
+    <p v-if="touched.size > 0 && !valid" role="status" class="ops-description">{{ $t('repo.parameters.invalid') }}</p>
   </div>
 </template>
 
 <script setup lang="ts">
-import { computed, watch } from 'vue';
+import { NCheckbox, NFormItem, NInput, NInputNumber, NSelect } from 'naive-ui';
+import { computed, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 
 import type { Parameter } from '~/lib/api/types';
 import { isParameterValueValid } from '~/lib/pipelineParameters';
 
-import Checkbox from './Checkbox.vue';
-import InputField from './InputField.vue';
 import MultiSelectField from './MultiSelectField.vue';
-import SelectField from './SelectField.vue';
-import TextField from './TextField.vue';
 
 const props = defineProps<{ parameters: Parameter[]; modelValue: Record<string, string> }>();
 const emit = defineEmits<{
@@ -59,16 +73,19 @@ const emit = defineEmits<{
   (event: 'update:isValid', value: boolean): void;
 }>();
 const i18n = useI18n();
+const touched = ref(new Set<string>());
 const label = (parameter: Parameter) => {
   if (parameter.name === 'deploy_to') return i18n.t('repo.deploy_pipeline.enter_target');
   if (parameter.name === 'deploy_task') return i18n.t('repo.deploy_pipeline.enter_task');
-  return parameter.name;
+  const text = parameter.name.toLowerCase().replaceAll('_', ' ');
+  return text.charAt(0).toUpperCase() + text.slice(1);
 };
 const value = (parameter: Parameter) =>
   Object.hasOwn(props.modelValue, parameter.name) ? props.modelValue[parameter.name] : '';
 const valid = computed(() => props.parameters.every((parameter) => isParameterValueValid(parameter, value(parameter))));
 watch(valid, (isValid) => emit('update:isValid', isValid), { immediate: true });
 function update(parameter: Parameter, selected: string) {
+  touched.value.add(parameter.name);
   emit('update:modelValue', { ...props.modelValue, [parameter.name]: selected });
 }
 </script>

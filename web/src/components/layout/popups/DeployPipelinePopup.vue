@@ -1,64 +1,128 @@
 <template>
-  <Popup :open="open" @close="$emit('close')">
-    <Panel
-      v-if="!loading && !loadError"
-      class="bg-wp-background-100 dark:bg-wp-background-300 max-h-[calc(100vh-2rem)] overflow-y-auto"
-    >
-      <form @submit.prevent="triggerDeployPipeline">
-        <span class="text-wp-text-100 text-xl">{{
-          $t('repo.deploy_pipeline.title', { pipelineId: pipelineNumber })
-        }}</span>
-        <PipelineParameterFields
-          v-model="parameterValues"
-          :parameters="parameters"
-          @update:is-valid="parametersValid = $event"
-        />
-        <InputField
-          v-if="!parameters.some((p) => p.name === 'deploy_to')"
-          v-slot="{ id }"
-          :label="$t('repo.deploy_pipeline.enter_target')"
+  <OpsUiProvider>
+    <NModal :show="open" @update:show="!$event && $emit('close')">
+      <NCard
+        role="dialog"
+        aria-modal="true"
+        :aria-labelledby="`${formId}-title`"
+        :bordered="false"
+        content-style="padding: 0"
+        header-style="padding: 24px var(--ops-dialog-gutter) 20px"
+        footer-style="padding: 18px var(--ops-dialog-gutter)"
+        :segmented="{ footer: 'soft' }"
+        closable
+        class="ops-dialog"
+        @close="$emit('close')"
+      >
+        <template #header>
+          <div class="ops-heading">
+            <div>
+              <div class="ops-eyebrow">{{ $t('repo.parameters.deployment_eyebrow') }}</div>
+              <h2 :id="`${formId}-title`" class="ops-title">
+                {{ $t('repo.parameters.deploy_heading', { number: pipelineNumber }) }}
+              </h2>
+            </div>
+            <NTag :bordered="false" type="success" round>
+              {{ $t('repo.parameters.source_number', { number: pipelineNumber }) }}
+            </NTag>
+          </div>
+        </template>
+        <div v-if="loading" class="flex justify-center py-12"><NSpin size="large" /></div>
+        <NAlert v-else-if="loadError" role="alert" type="error">{{ $t('repo.parameters.load_failed') }}</NAlert>
+        <NForm
+          v-else
+          :id="formId"
+          label-placement="top"
+          class="ops-dialog-content"
+          @submit.prevent="triggerDeployPipeline"
         >
-          <TextField :id="id" v-model="payload.environment" required />
-        </InputField>
-        <InputField
-          v-if="!parameters.some((p) => p.name === 'deploy_task')"
-          v-slot="{ id }"
-          :label="$t('repo.deploy_pipeline.enter_task')"
-        >
-          <TextField :id="id" v-model="payload.task" />
-        </InputField>
-        <InputField v-slot="{ id }" :label="$t('repo.deploy_pipeline.variables.title')">
-          <span class="text-wp-text-alt-100 mb-2 text-sm">{{ $t('repo.deploy_pipeline.variables.desc') }}</span>
-          <KeyValueEditor
-            :id="id"
-            v-model="payload.variables"
-            :key-placeholder="$t('repo.deploy_pipeline.variables.name')"
-            :value-placeholder="$t('repo.deploy_pipeline.variables.value')"
-            :delete-title="$t('repo.deploy_pipeline.variables.delete')"
-            @update:is-valid="isVariablesValid = $event"
+          <p class="ops-description">{{ $t('repo.parameters.deploy_description') }}</p>
+          <PipelineParameterFields
+            v-model="parameterValues"
+            :parameters="parameters"
+            @update:is-valid="parametersValid = $event"
           />
-        </InputField>
-        <Button type="submit" :text="$t('repo.deploy_pipeline.trigger')" :disabled="!isFormValid" />
-      </form>
-    </Panel>
-    <p v-if="loadError" role="alert">{{ $t('repo.parameters.load_failed') }}</p>
-  </Popup>
+          <NFormItem
+            v-if="!parameters.some((p) => p.name === 'deploy_to')"
+            :label="$t('repo.deploy_pipeline.enter_target')"
+            required
+          >
+            <NInput
+              v-model:value="payload.environment"
+              :input-props="{ 'aria-label': $t('repo.deploy_pipeline.enter_target') }"
+            />
+          </NFormItem>
+          <NFormItem
+            v-if="!parameters.some((p) => p.name === 'deploy_task')"
+            :label="$t('repo.deploy_pipeline.enter_task')"
+          >
+            <NInput
+              v-model:value="payload.task"
+              :input-props="{ 'aria-label': $t('repo.deploy_pipeline.enter_task') }"
+            />
+          </NFormItem>
+          <NCollapse class="ops-section">
+            <NCollapseItem
+              name="variables"
+              display-directive="show"
+              :title="$t('repo.deploy_pipeline.variables.title')"
+            >
+              <p class="ops-description">{{ $t('repo.deploy_pipeline.variables.desc') }}</p>
+              <OpsVariableEditor
+                v-model="payload.variables"
+                :key-placeholder="$t('repo.deploy_pipeline.variables.name')"
+                :value-placeholder="$t('repo.deploy_pipeline.variables.value')"
+                :delete-title="$t('repo.deploy_pipeline.variables.delete')"
+                @update:is-valid="isVariablesValid = $event"
+              />
+            </NCollapseItem>
+          </NCollapse>
+        </NForm>
+        <template #footer>
+          <div class="ops-actions">
+            <div v-if="sourceCommit" class="ops-source">
+              {{ $t('repo.parameters.commit') }} <code>{{ sourceCommit.slice(0, 10) }}</code>
+            </div>
+            <NButton @click="$emit('close')">{{ $t('cancel') }}</NButton>
+            <NButton
+              type="primary"
+              attr-type="submit"
+              :form="formId"
+              :loading="submitting"
+              :disabled="loading || loadError || !isFormValid"
+            >
+              {{ $t('repo.deploy_pipeline.trigger') }}
+            </NButton>
+          </div>
+        </template>
+      </NCard>
+    </NModal>
+  </OpsUiProvider>
 </template>
 
 <script lang="ts" setup>
-import { computed, ref, toRef, watch } from 'vue';
+import {
+  NAlert,
+  NButton,
+  NCard,
+  NCollapse,
+  NCollapseItem,
+  NForm,
+  NFormItem,
+  NInput,
+  NModal,
+  NSpin,
+  NTag,
+} from 'naive-ui';
+import { computed, ref, toRef, useId, watch } from 'vue';
 import { useRouter } from 'vue-router';
 
-import Button from '~/components/atomic/Button.vue';
-import InputField from '~/components/form/InputField.vue';
-import KeyValueEditor from '~/components/form/KeyValueEditor.vue';
-import TextField from '~/components/form/TextField.vue';
-import Panel from '~/components/layout/Panel.vue';
 import PipelineParameterFields from '~/components/form/PipelineParameterFields.vue';
+import OpsUiProvider from '~/components/ops/OpsUiProvider.vue';
+import OpsVariableEditor from '~/components/ops/OpsVariableEditor.vue';
 import { usePaginate } from '~/compositions/usePaginate';
 import type { Parameter } from '~/lib/api/types';
 import { initialParameterValues, parametersForEvent } from '~/lib/pipelineParameters';
-import Popup from '~/components/layout/Popup.vue';
 import useApiClient from '~/compositions/useApiClient';
 import { requiredInject } from '~/compositions/useInjectProvide';
 
@@ -71,6 +135,8 @@ const emit = defineEmits<{
   (event: 'close'): void;
 }>();
 
+const formId = `deploy-${useId()}`;
+const sourceCommit = ref('');
 const apiClient = useApiClient();
 const repo = requiredInject('repo');
 const router = useRouter();
@@ -126,6 +192,7 @@ watch(
         apiClient.getPipeline(repo.value.id, Number(number)),
       ]);
       if (generation !== loadGeneration) return;
+      sourceCommit.value = source.commit;
       parameters.value = parametersForEvent(definitions, 'deployment');
       parameterValues.value = initialParameterValues(parameters.value, {
         ...source.variables,
@@ -133,6 +200,7 @@ watch(
         ...(source.deploy_task ? { deploy_task: source.deploy_task } : {}),
       });
       payload.value = { id: '', environment: source.deploy_to || '', task: source.deploy_task || '', variables: {} };
+      isVariablesValid.value = true;
     } catch {
       if (generation === loadGeneration) loadError.value = true;
     } finally {

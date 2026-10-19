@@ -1,33 +1,43 @@
 <template>
   <div class="flex flex-col gap-2">
     <div v-for="(item, index) in displayItems" :key="index" class="flex gap-4">
-      <TextField
+      <slot
         :id="`${id}-key-${index}`"
-        :model-value="item.key"
-        :placeholder="keyPlaceholder"
-        :class="{
-          'bg-red-100 dark:bg-red-900':
-            isDuplicateKey(item.key, index) || (item.key === '' && index !== displayItems.length - 1),
-        }"
-        @update:model-value="updateItem(index, 'key', $event)"
-      />
-      <TextField
+        name="key-input"
+        :value="item.key"
+        :invalid="isDuplicateKey(item.key, index) || (item.key === '' && index !== displayItems.length - 1)"
+        :update="(value: string) => updateItem(index, 'key', value)"
+      >
+        <TextField
+          :id="`${id}-key-${index}`"
+          :model-value="item.key"
+          :placeholder="keyPlaceholder"
+          :class="{
+            'bg-red-100 dark:bg-red-900':
+              isDuplicateKey(item.key, index) || (item.key === '' && index !== displayItems.length - 1),
+          }"
+          @update:model-value="updateItem(index, 'key', $event)"
+        />
+      </slot>
+      <slot
         :id="`${id}-value-${index}`"
-        :model-value="item.value"
-        :placeholder="valuePlaceholder"
-        @update:model-value="updateItem(index, 'value', $event)"
-      />
+        name="value-input"
+        :value="item.value"
+        :update="(value: string) => updateItem(index, 'value', value)"
+      >
+        <TextField
+          :id="`${id}-value-${index}`"
+          :model-value="item.value"
+          :placeholder="valuePlaceholder"
+          @update:model-value="updateItem(index, 'value', $event)"
+        />
+      </slot>
       <div class="w-10 shrink-0">
-        <Button
-          v-if="index !== displayItems.length - 1"
-          type="button"
-          color="red"
-          class="ml-auto"
-          :title="deleteTitle"
-          @click="deleteItem(index)"
-        >
-          <Icon name="close" />
-        </Button>
+        <slot v-if="index !== displayItems.length - 1" name="remove-button" :remove="() => deleteItem(index)">
+          <Button type="button" color="red" class="ml-auto" :title="deleteTitle" @click="deleteItem(index)">
+            <Icon name="close" />
+          </Button>
+        </slot>
       </div>
     </div>
   </div>

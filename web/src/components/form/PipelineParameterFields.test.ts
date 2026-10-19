@@ -1,6 +1,7 @@
 import { mount } from '@vue/test-utils';
+import { NSelect } from 'naive-ui';
 import { describe, expect, it } from 'vitest';
-import { defineComponent, h, ref } from 'vue';
+import { defineComponent, h, nextTick, ref } from 'vue';
 import { createI18n } from 'vue-i18n';
 
 import en from '~/assets/locales/en.json';
@@ -59,10 +60,11 @@ describe('pipeline parameter fields', () => {
       global: { plugins: [createI18n({ legacy: false, locale: 'en', messages: { en } })] },
     });
     expect(valid.value).toBe(true);
-    const boxes = wrapper.findAll('input[type="checkbox"]');
+    const boxes = wrapper.findAll('[role="checkbox"]');
     await boxes[2].trigger('click');
     expect(values.value.SERVICES).toBe('server,worker');
-    await wrapper.get('select').setValue('production');
+    wrapper.findComponent(NSelect).vm.$emit('update:value', 'production');
+    await nextTick();
     expect(values.value.deploy_to).toBe('production');
     await boxes[0].trigger('click');
     await boxes[2].trigger('click');

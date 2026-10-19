@@ -1,5 +1,6 @@
-import { flushPromises, mount } from '@vue/test-utils';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { enableAutoUnmount, flushPromises, mount } from '@vue/test-utils';
+import { NSelect } from 'naive-ui';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { ref } from 'vue';
 import { createI18n } from 'vue-i18n';
 
@@ -7,6 +8,8 @@ import en from '~/assets/locales/en.json';
 import type { Parameter } from '~/lib/api/types';
 
 import DeployPipelinePopup from './DeployPipelinePopup.vue';
+
+enableAutoUnmount(afterEach);
 
 const { api, push } = vi.hoisted(() => ({
   api: { getParameterList: vi.fn(), getPipeline: vi.fn(), deployPipeline: vi.fn() },
@@ -75,6 +78,7 @@ const mountPopup = (open = true) =>
     props: { open, pipelineNumber: '42' },
     global: {
       config: { errorHandler: () => {} },
+      stubs: { teleport: true, transition: false },
       plugins: [createI18n({ legacy: false, locale: 'en', messages: { en } })],
       provide: { repo: ref({ id: 1 }) },
     },
@@ -94,13 +98,14 @@ describe('deploy typed parameters', () => {
     await wrapper.setProps({ open: true });
     await flushPromises();
     expect(api.getPipeline).toHaveBeenCalledWith(1, 42);
-    expect(wrapper.text()).not.toContain('BUILD_ONLY');
-    expect(wrapper.findAll('input[type="checkbox"]').every((box) => (box.element as HTMLInputElement).checked)).toBe(
-      true,
-    );
-    const selects = wrapper.findAll('select');
-    await selects[0].setValue('production');
-    await selects[1].setValue('cold');
+    expect(wrapper.text()).not.toContain('Build only');
+    expect(wrapper.findAll('[role="checkbox"]')).toHaveLength(2);
+    expect(wrapper.findAll('[role="checkbox"]').every((box) => box.attributes('aria-checked') === 'true')).toBe(true);
+    const selects = wrapper.findAllComponents(NSelect);
+    selects[0].vm.$emit('update:value', 'production');
+    await flushPromises();
+    selects[1].vm.$emit('update:value', 'cold');
+    await flushPromises();
     await wrapper.get('form').trigger('submit');
     await flushPromises();
     expect(api.deployPipeline).toHaveBeenCalledExactlyOnceWith(1, '42', {
@@ -132,5 +137,29 @@ describe('deploy typed parameters', () => {
     expect(wrapper.find('[role="alert"]').exists()).toBe(true);
     expect(wrapper.find('form').exists()).toBe(false);
     expect(api.deployPipeline).not.toHaveBeenCalled();
+  });
+
+  it('retains invalid variable rows while collapsed and resets validation for a fresh deployment', async () => {
+    const wrapper = mountPopup();
+    await flushPromises();
+    const collapseHeader = () => wrapper.get('.n-collapse-item__header-main');
+    await collapseHeader().trigger('click');
+    await flushPromises();
+    const keys = () => wrapper.findAll('input[aria-label="Variable name"]');
+    await keys()[0].setValue('EXTRA');
+    await keys()[1].setValue('EXTRA');
+    expect(wrapper.get('button[type="submit"]').attributes('disabled')).toBeDefined();
+    await collapseHeader().trigger('click');
+    await flushPromises();
+    await collapseHeader().trigger('click');
+    await flushPromises();
+    expect(keys().map((key) => (key.element as HTMLInputElement).value)).toEqual(['EXTRA', 'EXTRA', '']);
+    await wrapper.get('form').trigger('submit');
+    expect(api.deployPipeline).not.toHaveBeenCalled();
+    await wrapper.setProps({ open: false });
+    await flushPromises();
+    await wrapper.setProps({ open: true });
+    await flushPromises();
+    expect(wrapper.get('button[type="submit"]').attributes('disabled')).toBeUndefined();
   });
 });

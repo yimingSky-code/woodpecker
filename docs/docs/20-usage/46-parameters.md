@@ -4,6 +4,8 @@
 
 ## 页面操作
 
+参数设置、手动运行页和 Deploy 弹窗统一使用 Naive UI 控件。服务以 Checkbox 卡片多选，环境与任务使用下拉；自由变量收在可展开区域，保留原校验和提交行为。
+
 在仓库 **Settings → Parameters** 中定义参数。设置页沿用仓库管理员入口；参数 API 与原仓库 Secrets、Registry API 一样需要 push 权限。每个参数选择运行入口：
 
 - **Manual run**：出现在原生手动运行页，值传入本次 Pipeline 的 variables。

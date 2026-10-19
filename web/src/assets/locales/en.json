@@ -355,7 +355,16 @@
     },
     "parameters": {
       "invalid": "Complete the required fields and choose valid values.",
-      "load_failed": "Could not load pipeline parameters. Please try again."
+      "load_failed": "Could not load pipeline parameters. Please try again.",
+      "select_placeholder": "Select an option",
+      "manual_eyebrow": "Pipeline",
+      "manual_description": "Choose a source branch and configure the inputs for this run.",
+      "message_placeholder": "Optional note for this run",
+      "deployment_eyebrow": "Deployment",
+      "deploy_heading": "Deploy from run #{number}",
+      "deploy_description": "Choose the services and target environment for this deployment.",
+      "commit": "Commit",
+      "source_number": "Run #{number}"
     }
   },
   "org": {
