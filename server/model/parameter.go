@@ -38,19 +38,19 @@ var parameterNameRegex = regexp.MustCompile(`^[a-zA-Z_][a-zA-Z0-9_]*$`)
 
 // Parameter 定义仓库表单输入；同名参数在 manual 与 deployment 之间独立配置。
 type Parameter struct {
-	ID          int64         `json:"id" xorm:"pk autoincr 'id'"`
-	RepoID      int64         `json:"repo_id" xorm:"UNIQUE(s) INDEX 'repo_id'"`
-	Event       WebhookEvent  `json:"event" xorm:"UNIQUE(s) INDEX 'event' default 'manual'"`
-	Name        string        `json:"name" xorm:"UNIQUE(s) INDEX 'name'"`
-	Type        ParameterType `json:"type" xorm:"'param_type'"`
+	ID          int64         `json:"id"          xorm:"pk autoincr 'id'"`
+	RepoID      int64         `json:"repo_id"     xorm:"UNIQUE(s) INDEX 'repo_id'"`
+	Event       WebhookEvent  `json:"event"       xorm:"UNIQUE(s) INDEX 'event' default 'manual'"`
+	Name        string        `json:"name"        xorm:"UNIQUE(s) INDEX 'name'"`
+	Type        ParameterType `json:"type"        xorm:"'param_type'"`
 	Description string        `json:"description" xorm:"TEXT 'description'"`
 	// Default 仅在未提交该字段时生效；显式空值不会重新选中默认服务。
 	Default string `json:"default" xorm:"TEXT 'default_value'"`
 	// Options 为静态可选值；multi_choice 用逗号分隔传给既有变量通道。
-	Options  []string `json:"options" xorm:"json 'options'"`
+	Options  []string `json:"options"  xorm:"json 'options'"`
 	Required bool     `json:"required" xorm:"required"`
-	Order    int      `json:"order" xorm:"display_order"`
-	Source   string   `json:"source" xorm:"source"`
+	Order    int      `json:"order"    xorm:"display_order"`
+	Source   string   `json:"source"   xorm:"source"`
 } // @name Parameter
 
 func (Parameter) TableName() string { return "parameters" }
@@ -115,7 +115,7 @@ func (p *Parameter) ValidateValue(value string) error {
 		}
 	case ParameterTypeMultiChoice:
 		seen := map[string]bool{}
-		for _, selected := range strings.Split(value, ",") {
+		for selected := range strings.SplitSeq(value, ",") {
 			if seen[selected] || !slices.Contains(p.Options, selected) {
 				return fmt.Errorf("parameter %q contains an invalid or duplicate choice", p.Name)
 			}

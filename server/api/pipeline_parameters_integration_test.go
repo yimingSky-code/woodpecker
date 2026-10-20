@@ -38,10 +38,10 @@ import (
 	queue_mocks "go.woodpecker-ci.org/woodpecker/v3/server/queue/mocks"
 	"go.woodpecker-ci.org/woodpecker/v3/server/router/middleware/session"
 	"go.woodpecker-ci.org/woodpecker/v3/server/scheduler"
-	config_mocks "go.woodpecker-ci.org/woodpecker/v3/server/services/config/mocks"
+	config_service_mocks "go.woodpecker-ci.org/woodpecker/v3/server/services/config/mocks"
 	manager_mocks "go.woodpecker-ci.org/woodpecker/v3/server/services/mocks"
-	registry_mocks "go.woodpecker-ci.org/woodpecker/v3/server/services/registry/mocks"
-	secret_mocks "go.woodpecker-ci.org/woodpecker/v3/server/services/secret/mocks"
+	registry_service_mocks "go.woodpecker-ci.org/woodpecker/v3/server/services/registry/mocks"
+	secret_service_mocks "go.woodpecker-ci.org/woodpecker/v3/server/services/secret/mocks"
 )
 
 // 真实 HTTP handler、SQLite migration、配置编译与调度；forge/queue 是边界替身，不连接外部发布目标。
@@ -62,20 +62,22 @@ func TestTypedParametersManualDeployIntegration(t *testing.T) {
 	forge.On("BranchHead", mock.Anything, mock.Anything, mock.Anything, "main").Return(&model.Commit{SHA: "fixed-build-sha", ForgeURL: "https://example.com/commit/fixed-build-sha"}, nil).Once()
 	forge.On("Netrc", mock.Anything, mock.Anything).Return(&model.Netrc{}, nil).Maybe()
 	forge.On("Status", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil).Maybe()
-	configs := config_mocks.NewMockService(t)
+	configs := config_service_mocks.NewMockService(t)
 	manualConfig := []*forge_types.FileMeta{{Name: ".woodpecker.yaml", Data: []byte("when:\n  event: [manual, deployment]\nsteps:\n  probe:\n    image: alpine:3.21\n    commands:\n      - echo ${SERVICES}\n")}}
 	// Deploy 必须接到已持久化配置；不借此重新获取分支 HEAD。
 	configs.On("Fetch", mock.Anything, forge, mock.Anything, repo, mock.Anything, mock.Anything, false).Return(manualConfig, nil).Once()
 	configs.On("Fetch", mock.Anything, forge, mock.Anything, repo, mock.Anything, mock.Anything, true).Run(func(args mock.Arguments) {
-		source := args.Get(4).(*model.Pipeline)
+		source, ok := args.Get(4).(*model.Pipeline)
+		require.True(t, ok)
 		assert.Equal(t, "fixed-build-sha", source.Commit)
-		old := args.Get(5).([]*forge_types.FileMeta)
+		old, ok := args.Get(5).([]*forge_types.FileMeta)
+		require.True(t, ok)
 		require.Len(t, old, 1)
 		assert.Equal(t, manualConfig[0].Data, old[0].Data)
 	}).Return(manualConfig, nil)
-	secrets := secret_mocks.NewMockService(t)
+	secrets := secret_service_mocks.NewMockService(t)
 	secrets.On("SecretListPipeline", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return([]*model.Secret{}, nil).Maybe()
-	registries := registry_mocks.NewMockService(t)
+	registries := registry_service_mocks.NewMockService(t)
 	registries.On("RegistryListPipeline", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return([]*model.Registry{}, nil).Maybe()
 	manager := manager_mocks.NewMockManager(t)
 	manager.On("ForgeFromRepo", mock.Anything).Return(forge, nil)
@@ -88,7 +90,9 @@ func TestTypedParametersManualDeployIntegration(t *testing.T) {
 	queue := queue_mocks.NewMockQueue(t)
 	var queued []*model.Task
 	queue.On("PushAtOnce", mock.Anything, mock.Anything).Run(func(args mock.Arguments) {
-		queued = append(queued, args.Get(1).([]*model.Task)...)
+		tasks, ok := args.Get(1).([]*model.Task)
+		require.True(t, ok)
+		queued = append(queued, tasks...)
 	}).Return(nil)
 	server.Config.Services.Scheduler = scheduler.NewScheduler(t.Context(), s, queue, memory.New())
 
@@ -156,7 +160,7 @@ func TestTypedParametersManualDeployIntegration(t *testing.T) {
 		require.Equal(t, http.StatusUnprocessableEntity, result.Code, result.Body.String())
 	}
 	require.Len(t, queued, 1, "非法输入不可排入执行队列")
-	var previous int64 = build.Number
+	previous := build.Number
 	for index, target := range []string{"testing", "production"} {
 		result := request(http.MethodPost, fmt.Sprintf("/pipelines/%d?event=deployment&deploy_to=%s&deploy_task=cold&SERVICES=worker", previous, target), nil)
 		require.Equal(t, http.StatusOK, result.Code, result.Body.String())

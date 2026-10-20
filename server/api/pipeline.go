@@ -21,6 +21,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"maps"
 	"mime"
 	"net/http"
 	"strconv"
@@ -232,13 +233,36 @@ func DeletePipeline(c *gin.Context) {
 		return
 	}
 
-	err := store.FromContext(c).DeletePipeline(pl)
+	_store := store.FromContext(c)
+
+	if err := deleteStoredLogs(_store, pl.ID); err != nil {
+		c.String(http.StatusInternalServerError, "Error deleting pipeline logs. %s", err)
+		return
+	}
+
+	err := _store.DeletePipeline(pl)
 	if err != nil {
 		c.String(http.StatusInternalServerError, "Error deleting pipeline. %s", err)
 		return
 	}
 
 	c.Status(http.StatusNoContent)
+}
+
+// deleteStoredLogs deletes the logs of every step of a pipeline from the log store.
+// Deleting steps from the database only removes logs kept in the database,
+// so logs kept by other log stores would stay behind.
+func deleteStoredLogs(_store store.Store, pipelineID int64) error {
+	steps, err := _store.StepList(pipelineID)
+	if err != nil {
+		return err
+	}
+
+	var errs error
+	for _, step := range steps {
+		errs = errors.Join(errs, server.Config.Services.LogStore.LogDelete(step))
+	}
+	return errs
 }
 
 // GetPipeline
@@ -384,7 +408,6 @@ func sanitizeDownloadFilename(filename string) string {
 //	@Param		pipeline_number	path	int		true	"the number of the pipeline"
 //	@Param		step_id			path	int		true	"the step id"
 func DeleteStepLogs(c *gin.Context) {
-	_store := store.FromContext(c)
 	_step := session.Step(c)
 
 	switch _step.State {
@@ -393,7 +416,7 @@ func DeleteStepLogs(c *gin.Context) {
 		return
 	}
 
-	err := _store.LogDelete(_step)
+	err := server.Config.Services.LogStore.LogDelete(_step)
 	if err != nil {
 		handleDBError(c, err)
 		return
@@ -662,7 +685,7 @@ func DeletePipelineLogs(c *gin.Context) {
 	}
 
 	for _, step := range steps {
-		if lErr := server.Config.Services.LogStore.LogDelete(step); err != nil {
+		if lErr := server.Config.Services.LogStore.LogDelete(step); lErr != nil {
 			err = errors.Join(err, lErr)
 		}
 	}
@@ -682,12 +705,8 @@ func validateDeploymentParameters(c *gin.Context, s store.Store, repo *model.Rep
 		return err
 	}
 	values := make(map[string]string, len(pl.AdditionalVariables)+len(envs)+2)
-	for name, value := range pl.AdditionalVariables {
-		values[name] = value
-	}
-	for name, value := range envs {
-		values[name] = value
-	}
+	maps.Copy(values, pl.AdditionalVariables)
+	maps.Copy(values, envs)
 	delete(values, "deploy_to")
 	delete(values, "deploy_task")
 	if _, present := c.Request.URL.Query()["deploy_to"]; present || pl.DeployTo != "" {
@@ -706,8 +725,6 @@ func validateDeploymentParameters(c *gin.Context, s store.Store, repo *model.Rep
 	delete(values, "deploy_task")
 	delete(envs, "deploy_task")
 	pl.AdditionalVariables = values
-	for name, value := range values {
-		envs[name] = value
-	}
+	maps.Copy(envs, values)
 	return nil
 }

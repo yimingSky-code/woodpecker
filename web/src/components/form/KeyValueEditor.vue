@@ -13,7 +13,7 @@
           :model-value="item.key"
           :placeholder="keyPlaceholder"
           :class="{
-            'bg-red-100 dark:bg-red-900':
+            'bg-red-100 dark:bg-red-900!':
               isDuplicateKey(item.key, index) || (item.key === '' && index !== displayItems.length - 1),
           }"
           @update:model-value="updateItem(index, 'key', $event)"

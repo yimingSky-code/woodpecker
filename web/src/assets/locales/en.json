@@ -49,14 +49,12 @@
         "value": "Variable value"
       },
       "message": {
-        "title": "Message",
-        "desc": "This message is added to the pipeline's message as additional information."
+        "title": "Message"
       },
       "show_pipelines": "Show pipelines",
       "no_manual_workflows": "No matching workflows found. Make sure at least one workflow runs on the manual event."
     },
     "deploy_pipeline": {
-      "title": "Trigger a deployment for current pipeline #{pipelineId}",
       "enter_target": "Target environment for deployment",
       "enter_task": "Deployment task",
       "trigger": "Deploy",
@@ -75,6 +73,7 @@
     "refresh": "Refresh repository list",
     "user_none": "This organization/user has no projects yet",
     "not_allowed": "You are not allowed to access this repository",
+    "perm_sync_failed": "Your permissions for this repository could not be synced with the forge. Your access is temporarily degraded to read-only.",
     "enable": {
       "enable": "Enable",
       "enabled": "Already enabled",
@@ -251,14 +250,12 @@
         "no_default": "No default",
         "required": "Required",
         "order": {
-          "order": "Position",
-          "desc": "Parameters are sorted ascending by this value in the run form."
+          "order": "Position"
         },
         "event": {
           "title": "Run type",
           "manual": "Manual run",
-          "deployment": "Deploy from a build",
-          "desc": "deploy_to and deploy_task configure the native Deploy fields. Other names become pipeline variables."
+          "deployment": "Deploy from a build"
         }
       }
     },

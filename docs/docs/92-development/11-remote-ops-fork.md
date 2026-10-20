@@ -2,11 +2,24 @@
 
 ## 本次范围
 
-上游为 `woodpecker-ci/woodpecker`，基线为 `v3.19.0`（`9f5568c20a1f7195d23c4194c49d53bd2580be41`）。开发分支为 `codex/remote-ops-parameters`。保留 Apache-2.0 及上游版权声明。参数基础实现参考 PR #6878 的 `4f663d2d4ec2e5b4744544d02591383ee2490451`；本 fork 适配 3.19.0 的分页与迁移合同，并扩展原生 Deploy。
+上游为 `woodpecker-ci/woodpecker`，初始基线为 `v3.19.0`（`9f5568c20a1f7195d23c4194c49d53bd2580be41`），2026-10-20 同步至上游 main 的 `c9b8f9c0`。开发分支为 `codex/remote-ops-parameters`。保留 Apache-2.0 及上游版权声明。参数基础实现参考 PR #6878 的 `4f663d2d4ec2e5b4744544d02591383ee2490451`；本 fork 保留分页与迁移合同，并扩展原生 Deploy。
 
 只有一个 Woodpecker Server。Server 管参数定义、运行记录和调度；workflow 管发布步骤；Agent 执行步骤；Go `next` 保留原命令、校验、确认与状态职责。当前 fork 改动为控制面参数能力及原生界面整理，不修改 TruthLoop 运行代码和 V3 配置。
 
 参数界面使用 [Naive UI](https://www.naiveui.com/) `2.45.3`（MIT、Vue 3），通过具名导入按需使用 Checkbox、Select、Input、Form、Card 和 Modal。范围为原生 manual 页、Deploy 弹窗与参数设置；不另加业务页面。`OpsUiProvider` 接入既有明暗主题，关闭组件库 preflight，不引入全局样式重置；局部布局使用 `ops-` 类名。自由变量编辑通过原 `KeyValueEditor` 的可选渲染插槽更换控件，保留原增删行与重复键校验，其余调用方沿用原渲染。
+
+## 分支与上游同步
+
+| 分支 | 用途 |
+| --- | --- |
+| main | 跟随 upstream/main，使用 fast-forward 同步，不放 remote-ops 定制 |
+| codex/remote-ops-parameters | 保存参数、Deploy、Naive UI 与中文页面改造；使用 merge 合入上游，保留已发布提交历史 |
+
+GitHub 仓库首页默认显示 main。定制源码应查看 [remote-ops 分支](https://github.com/yimingSky-code/woodpecker/tree/codex/remote-ops-parameters)，不能仅凭首页没有页面改造判断提交未推送。
+
+同步先 fetch 并比较两个分支与远端，确认工作区干净；main 仅 fast-forward，定制分支合入同一个已核对的上游 commit。冲突需保留参数变量持久化、原权限链、Naive UI 插槽和定制布局，同时保留上游行为修复；锁文件基于上游版本，用合并后 package.json 声明的 pnpm 重新生成并 frozen install，不能直接选一侧丢失组件库或回退上游依赖。验证通过后正常 push 两个分支，不 rebase/force push 已推送的定制提交，不向官方仓库推送。
+
+2026-10-20 同步时，三个定制提交 `f8429579`、`1f1cae2e`、`edf5ed0b` 已在远端定制分支；fork main 落后上游 5 个提交，定制分支相对初始基线需合入上游 80 个提交。同步目标为 [上游 c9b8f9c0](https://github.com/woodpecker-ci/woodpecker/commit/c9b8f9c0)，不是把 next-release/main 上的候选提交当正式版本发布。合入源码不更新运行中的 Server/Agent、数据库或 V3 配置。
 
 ## 调用与持久化
 
@@ -31,7 +44,8 @@
 在根目录执行：
 
 ```sh
-GOMAXPROCS=4 go test -p 2 -mod=readonly -tags test -count=1 ./server/model ./server/api ./server/store/datastore ./server/pipeline ./server/router
+GOMAXPROCS=4 go test -p 1 -mod=readonly -tags test -count=1 -timeout=180s ./server/...
+GOMAXPROCS=4 go run github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.15.0 run --new-from-rev=upstream/main ./server/...
 CGO_ENABLED=0 GOMAXPROCS=4 go generate cmd/server/openapi.go
 ```
 
@@ -43,6 +57,8 @@ pnpm typecheck
 pnpm exec vitest run --maxWorkers=2
 pnpm build
 ```
+
+使用 package.json 声明的 pnpm 版本；本机版本不匹配时通过 corepack pnpm 执行，不修改全局工具配置。Go lint 版本跟随上游 Makefile，旧版工具不能用来检查新版配置。`--new-from-rev` 检查相对已 fetch 上游的定制差异，不等同所有上游代码的完整 lint。
 
 首次 Go 路由检查前先完成 UI build，以提供 go:embed 所需的 dist。格式与 lint 仅针对修改文件，不扩大无关代码格式。
 
@@ -124,3 +140,12 @@ Woodpecker     仓库 / 文档 / API                     设置 / 用户
 | 语言别名或旧 zh 偏好回退英文 | 11 个语言解析行为用例，页面实际 zh-Hans；有效 en 等用户选择保留 |
 | 视觉调整误放开失败部署或改变日志操作 | 保留原条件/handler，失败与成功记录对照，日志全屏及页签实测 |
 | 隔离预览误写原实例 | 仅重启 fork；校验原配置摘要、原数据库和两个实例记录数量 |
+
+## 上游同步验证（2026-10-20）
+
+- 合入 upstream/main 的 c9b8f9c0，保留三个原定制提交。四处冲突分别为锁文件、KeyValueEditor、Navbar 和 PipelineLog；保留 Naive UI 插槽及定制布局，合入上游暗色错误提示、日志颜色与状态图标修正。相对上游仍只涉及原定制的 55 个文件，没有意外差异路径。
+- 前端 15 个文件、105 项测试通过；Vue 类型检查、全量 ESLint、Prettier 与生产构建通过。全量 lint 发现并清理四个已无调用的英文文案键，没有关闭规则。
+- `go test ./server/...` 按上方 test tags、只读模块及串行包配置全部通过，覆盖 API、forge、pipeline/queue、日志服务、SQLite 与 migration。对 lint 等价改写后的 model/API 再次回归通过；真实 HTTP → SQLite → 配置编译/队列的参数与二次 Deploy 闭环保留。
+- 使用上游指定 golangci-lint v2.15.0，对相对 upstream/main 的定制差异检查为 0 issues。适配 mock 别名、断言检查、标签对齐、maps.Copy 和 SplitSeq，不改变参数值、覆盖顺序、业务门禁或数据库合同。Git 差异检查与合并后的中英文 JSON 解析通过。
+
+本次仅同步源码、依赖与本地验证，未更新运行中的 Server/Agent、OAuth 授权或数据库，不接触 V3 与现有配置。没有重新执行浏览器 OAuth 或真实发布，因此上述检查不代替正式部署和 Go next 业务 FIT。三项自审确认没有新增管理实体/通用机制、没有偏离单 Server 的控制面主线、没有改写第三方依赖或共享稳定资产。
